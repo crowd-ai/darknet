@@ -5,6 +5,7 @@
 #include "parser.h"
 #include "box.h"
 #include "demo.h"
+#include "string.h"
 
 #ifdef OPENCV
 #include "opencv2/highgui/highgui_c.h"
@@ -282,7 +283,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     }
 }
 
-void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
+void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh, char *output_path)
 {
     image **alphabet = load_alphabet();
     network net = parse_network_cfg(cfgfile);
@@ -319,9 +320,12 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
         get_detection_boxes(l, 1, 1, thresh, probs, boxes, 0);
         if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
         //draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, alphabet, 20);
-        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, alphabet, 20);
-        save_image(im, "predictions");
-        show_image(im, "predictions");
+        draw_detections(im, l.side*l.side*l.n, thresh, boxes, probs, voc_names, alphabet, 20, output_path);
+        char *token;
+        char *search = ".";
+        token = strtok(filename, search);
+        //save_image(im, token);
+        //show_image(im, "predictions");
 
         free_image(im);
         free_image(sized);
@@ -347,7 +351,8 @@ void run_yolo(int argc, char **argv)
     char *cfg = argv[3];
     char *weights = (argc > 4) ? argv[4] : 0;
     char *filename = (argc > 5) ? argv[5]: 0;
-    if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
+    char *output_path = (argc > 6) ? argv[6]: 0;
+    if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh, output_path);
     else if(0==strcmp(argv[2], "train")) train_yolo(cfg, weights);
     else if(0==strcmp(argv[2], "valid")) validate_yolo(cfg, weights);
     else if(0==strcmp(argv[2], "recall")) validate_yolo_recall(cfg, weights);

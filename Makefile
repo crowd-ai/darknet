@@ -12,7 +12,7 @@ OBJDIR=./obj/
 CC=gcc
 NVCC=nvcc 
 OPTS=-Ofast
-LDFLAGS= -lm -pthread 
+LDFLAGS= -lm -pthread -l json-c 
 COMMON= 
 CFLAGS=-Wall -Wfatal-errors 
 

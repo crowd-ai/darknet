@@ -4,6 +4,7 @@
 #include "cuda.h"
 #include <stdio.h>
 #include <math.h>
+#include <json-c/json.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -19,6 +20,24 @@
 int windows = 0;
 
 float colors[6][3] = { {1,0,1}, {0,0,1},{0,1,1},{0,1,0},{1,1,0},{1,0,0} };
+
+json_object *get_json(char *type, float prob, int x1, int y1, int x2, int y2)
+{
+  json_object *jobj = json_object_new_object();
+  json_object *obj_type = json_object_new_string(type);
+  json_object *jx1 = json_object_new_int(x1);
+  json_object *jy1 = json_object_new_int(y1);
+  json_object *jx2 = json_object_new_int(x2);
+  json_object *jy2 = json_object_new_int(y2);
+  json_object *jprob = json_object_new_double(prob);
+  json_object_object_add(jobj, "type", obj_type);
+  json_object_object_add(jobj, "prob", jprob);
+  json_object_object_add(jobj, "x1", jx1);
+  json_object_object_add(jobj, "x2", jx2);
+  json_object_object_add(jobj, "y1", jy1);
+  json_object_object_add(jobj, "y2", jy2);
+  return jobj;
+}
 
 float get_color(int c, int x, int max)
 {
@@ -177,10 +196,11 @@ image **load_alphabet()
     return alphabets;
 }
 
-void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes)
+void draw_detections(image im, int num, float thresh, box *boxes, float **probs, char **names, image **alphabet, int classes, char *output_path)
 {
     int i;
-
+    // initiate json object array
+    json_object *obj_array = json_object_new_array();
     for(i = 0; i < num; ++i){
         int class = max_index(probs[i], classes);
         float prob = probs[i][class];
@@ -210,14 +230,35 @@ void draw_detections(image im, int num, float thresh, box *boxes, float **probs,
             if(right > im.w-1) right = im.w-1;
             if(top < 0) top = 0;
             if(bot > im.h-1) bot = im.h-1;
+            if (strcmp(names[class], "car") == 0 || strcmp(names[class], "person") == 0) {
+              // populate json objet array
+              json_object *thing = get_json(names[class], prob, left, top, right, bot);
+              // add json object to array
+              json_object_array_add(obj_array, thing);
 
-            draw_box_width(im, left, top, right, bot, width, red, green, blue);
-            if (alphabet) {
-                image label = get_label(alphabet, names[class], (im.h*.03)/10);
-                draw_label(im, top + width, left, label, rgb);
-            }
+              printf(" %d ", strcmp(names[class], "car"));
+              printf(" %s \n", names[class]);
+              draw_box_width(im, left, top, right, bot, width, red, green, blue);
+              if (alphabet) {
+                  image label = get_label(alphabet, names[class], 7);
+                  draw_label(im, top + width, left, label, rgb);
+              }
+            };
         }
     }
+  write_to_file(json_object_to_json_string(obj_array), output_path);
+}
+
+void write_to_file(char *output, char *output_path)
+{
+  FILE *f = fopen(output_path, "w");
+  if (f == NULL) {
+    printf("Error opening file!\n");
+    exit(1);
+  }
+  fprintf(f, output);
+  fclose(f);
+  
 }
 
 void transpose_image(image im)
@@ -441,7 +482,7 @@ void show_image(image p, const char *name)
     show_image_cv(p, name);
 #else
     fprintf(stderr, "Not compiled with OpenCV, saving to %s.png instead\n", name);
-    save_image(p, name);
+    //save_image(p, name);
 #endif
 }
 
@@ -1315,7 +1356,7 @@ void show_images(image *ims, int n, char *window)
        image sized = resize_image(m, w, h);
      */
     normalize_image(m);
-    save_image(m, window);
+    //save_image(m, window);
     show_image(m, window);
     free_image(m);
 }
